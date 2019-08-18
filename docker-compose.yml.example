@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+
+    music-transcoder:
+        container_name: music_transcoder
+        restart: unless-stopped
+        image: music-transcoder
+        volumes:
+            - ./music_in:/opt/app/music_in
+            - ./music_out:/opt/app/music_out

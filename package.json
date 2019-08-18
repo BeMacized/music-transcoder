@@ -1,0 +1,46 @@
+{
+    "name": "music-transcoder",
+    "version": "1.0.0",
+    "description": "",
+    "main": "dist/app.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "build": "rimraf dist/ && webpack && cp package.json dist/package.json",
+        "start": "ts-node src/main.ts",
+        "image": "docker build -t music-transcoder ."
+    },
+    "author": "",
+    "license": "GPL-3.0",
+    "lint-staged": {
+        "*.{ts,json,scss,md}": [
+            "prettier --write",
+            "git add"
+        ]
+    },
+    "dependencies": {
+        "chokidar": "^3.0.2",
+        "dotenv": "^8.0.0",
+        "injection-js": "^2.2.2",
+        "mkdirp": "^0.5.1",
+        "music-metadata": "^4.3.0",
+        "p-queue": "^6.1.1",
+        "reflect-metadata": "^0.1.13",
+        "rxjs": "^6.5.2",
+        "sox-async": "^1.0.6",
+        "winston": "^3.2.1"
+    },
+    "devDependencies": {
+        "@types/node": "^12.7.2",
+        "copy-webpack-plugin": "^5.0.4",
+        "prettier": "^1.18.2",
+        "rimraf": "^3.0.0",
+        "ts-loader": "^6.0.4",
+        "ts-node": "^8.3.0",
+        "tslint": "^5.18.0",
+        "tslint-config-prettier": "^1.18.0",
+        "typescript": "^3.5.3",
+        "webpack": "^4.39.2",
+        "webpack-cli": "^3.3.6",
+        "webpack-node-externals": "^1.7.2"
+    }
+}
