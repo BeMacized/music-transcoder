@@ -14,5 +14,5 @@ RUN mkdir music_in
 RUN mkdir music_out
 RUN npm install --only=prod
 RUN apt-get update
-RUN apt-get install sox libsox-fmt-all -y
+RUN apt-get install ffmpeg -y
 CMD ["node", "app.js"]

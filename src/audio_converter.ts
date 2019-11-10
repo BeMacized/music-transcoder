@@ -2,30 +2,22 @@ import { Injectable } from 'injection-js';
 import { OnInit } from './utils/generic';
 import { Provider } from './utils/provider';
 import chokidar, { FSWatcher } from 'chokidar';
-import SoxAsync from 'sox-async';
 import fs, { existsSync } from 'fs';
 import nodePath from 'path';
 import PQueue from 'p-queue';
 import * as mm from 'music-metadata';
 import mkdirp from 'mkdirp';
-
-const OUTPUT_FORMAT = {
-    type: 'mp3',
-    rate: 44100,
-    channels: 2
-};
+import ffmpeg from 'fluent-ffmpeg';
+import glob from 'glob';
 
 @Injectable()
 export class AudioConverter extends Provider implements OnInit {
     _watcher: FSWatcher;
-    _sox: SoxAsync;
     _queue: PQueue;
 
     async onInit() {
         // Initialise promise queue
         this._queue = new PQueue({ concurrency: 1 });
-        // Initialise sox
-        this._sox = new SoxAsync();
         // Initialise file watcher
         this._watcher = chokidar.watch(process.cwd() + '/music_in/**/*', {
             ignored: /^\./,
@@ -42,6 +34,23 @@ export class AudioConverter extends Provider implements OnInit {
             .on('error', e => this.error(e));
     }
 
+    _transcode = async (inputPath: string, outputPath: string) => {
+        await new Promise((resolve, reject) => {
+            ffmpeg(inputPath)
+                .audioCodec('libmp3lame')
+                .audioQuality(2)
+                .audioBitrate(44100)
+                .audioChannels(2)
+                .on('error', (err, stdout, stderr) => {
+                    reject(err);
+                })
+                .on('end', (stdout, stderr) => {
+                    resolve();
+                })
+                .saveToFile(outputPath);
+        });
+    };
+
     _onAdd = async (path: string) => {
         await this._queue.add(async () => {
             // Check if already transcoded
@@ -54,12 +63,9 @@ export class AudioConverter extends Provider implements OnInit {
             if (await this._isAudioFile(inputPath)) {
                 await mkdirp.sync(nodePath.dirname(outputPath));
                 // Start transcoding
+                this.info('Transcoding...', path);
                 try {
-                    await this._sox.run({
-                        inputFile: inputPath,
-                        output: OUTPUT_FORMAT,
-                        outputFile: outputPath
-                    });
+                    await this._transcode(inputPath, outputPath);
                     this.info('Transcoded', path);
                 } catch (e) {
                     this.error('Could not transcode', path, e);
@@ -79,15 +85,13 @@ export class AudioConverter extends Provider implements OnInit {
             // Create folder
             await mkdirp.sync(nodePath.dirname(outputPath));
             // Check if transcodable
+            this.info('Transcoding...', path);
             if (await this._isAudioFile(inputPath)) {
                 await mkdirp.sync(nodePath.dirname(outputPath));
                 // Start transcoding
+                this.info('Transcoding...', path);
                 try {
-                    await this._sox.run({
-                        inputFile: inputPath,
-                        output: OUTPUT_FORMAT,
-                        outputFile: outputPath
-                    });
+                    await this._transcode(inputPath, outputPath);
                     this.info('Transcoded', path);
                 } catch (e) {
                     this.error('Could not transcode', path, e);
@@ -102,23 +106,29 @@ export class AudioConverter extends Provider implements OnInit {
 
     _onRemove = async (path: string) => {
         await this._queue.add(async () => {
-            const outPath = await this._outputPathForPath(path);
-            if (fs.existsSync(outPath)) {
-                fs.unlinkSync(process.cwd() + '/music_out/' + path);
-                this.info('Removed', path);
-                let parentPath = nodePath.dirname(outPath);
-                while (!parentPath.endsWith('music_out')) {
-                    if (fs.readdirSync(parentPath).length > 0) break;
-                    fs.rmdirSync(parentPath);
-                    parentPath = nodePath.dirname(parentPath);
-                }
-            }
+            const pathNoExt = path
+                .split('.')
+                .slice(0, -1)
+                .join();
+            glob(process.cwd() + '/music_out/' + pathNoExt + '*', {}, (err, files) => {
+                files.forEach(file => {
+                    fs.unlinkSync(file);
+                    this.info('Removed', path);
+                    let parentPath = nodePath.dirname(file);
+                    while (!parentPath.endsWith('music_out')) {
+                        if (fs.readdirSync(parentPath).length > 0) break;
+                        fs.rmdirSync(parentPath);
+                        parentPath = nodePath.dirname(parentPath);
+                    }
+                });
+            });
         });
     };
 
     _outputPathForPath = async (path: string) => {
         const pathData = nodePath.parse(path);
-        pathData.ext = (await this._isAudioFile(this._inputPathForPath(path))) ? OUTPUT_FORMAT.type : pathData.ext.substr(1);
+        const isAudioFile = await this._isAudioFile(this._inputPathForPath(path));
+        pathData.ext = isAudioFile ? 'mp3' : pathData.ext.substr(1);
         return nodePath.join(process.cwd(), 'music_out', pathData.dir, pathData.name + '.' + pathData.ext);
     };
 

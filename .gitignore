@@ -4,3 +4,7 @@ dist/
 *.log
 .env
 docker-compose.yml
+music_in/
+music_out/
+
+
