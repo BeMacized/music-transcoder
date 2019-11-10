@@ -4,15 +4,10 @@ COPY package.json .
 COPY src src
 COPY webpack.config.js .
 COPY tsconfig.json .
-RUN npm install
-RUN npm run build
+RUN npm install && npm run build
 
 FROM node:12-buster
 COPY --from=builder /opt/app/dist /opt/app
 WORKDIR /opt/app
-RUN mkdir music_in
-RUN mkdir music_out
-RUN npm install --only=prod
-RUN apt-get update
-RUN apt-get install ffmpeg -y
+RUN mkdir music_in && mkdir music_out && npm install --only=prod && apt-get update && apt-get install ffmpeg -y
 CMD ["node", "app.js"]

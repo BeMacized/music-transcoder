@@ -17,7 +17,7 @@ export class AudioConverter extends Provider implements OnInit {
 
     async onInit() {
         // Initialise promise queue
-        this._queue = new PQueue({ concurrency: 1 });
+        this._queue = new PQueue({ concurrency: 12 });
         // Initialise file watcher
         this._watcher = chokidar.watch(process.cwd() + '/music_in/**/*', {
             ignored: /^\./,
