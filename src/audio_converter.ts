@@ -53,79 +53,88 @@ export class AudioConverter extends Provider implements OnInit {
     };
 
     _onAdd = async (path: string) => {
-        console.log('QUEUE ADD', path);
         await this._queue.add(async () => {
-            // Check if already transcoded
-            const outputPath = await this._outputPathForPath(path);
-            const inputPath = this._inputPathForPath(path);
-            if (fs.existsSync(outputPath)) return;
-            // Create folder
-            await mkdirp.sync(nodePath.dirname(outputPath));
-            // Check if transcodable
-            if (await this._isAudioFile(inputPath)) {
+            try {
+                // Check if already transcoded
+                const outputPath = await this._outputPathForPath(path);
+                const inputPath = this._inputPathForPath(path);
+                if (fs.existsSync(outputPath)) return;
+                // Create folder
                 await mkdirp.sync(nodePath.dirname(outputPath));
-                // Start transcoding
-                this.info('Transcoding...', path);
-                try {
-                    await this._transcode(inputPath, outputPath);
-                    this.info('Transcoded', path);
-                } catch (e) {
-                    this.error('Could not transcode', path, e);
+                // Check if transcodable
+                if (await this._isAudioFile(inputPath)) {
+                    await mkdirp.sync(nodePath.dirname(outputPath));
+                    // Start transcoding
+                    this.info('Transcoding...', path);
+                    try {
+                        await this._transcode(inputPath, outputPath);
+                        this.info('Transcoded', path);
+                    } catch (e) {
+                        this.error('Could not transcode', path, e);
+                    }
+                } else {
+                    // Just copy file if not transcodable
+                    this.info('Moving file', path);
+                    fs.copyFileSync(inputPath, outputPath);
                 }
-            } else {
-                // Just copy file if not transcodable
-                this.info('Moving file', path);
-                fs.copyFileSync(inputPath, outputPath);
+            } catch (e) {
+                this.info('UNEXPECTED ERROR', 'onAdd', e);
             }
         });
     };
 
     _onChange = async (path: string) => {
-        console.log('QUEUE CHANGE', path);
         await this._queue.add(async () => {
-            const outputPath = await this._outputPathForPath(path);
-            const inputPath = this._inputPathForPath(path);
-            // Create folder
-            await mkdirp.sync(nodePath.dirname(outputPath));
-            // Check if transcodable
-            this.info('Transcoding...', path);
-            if (await this._isAudioFile(inputPath)) {
+            try {
+                const outputPath = await this._outputPathForPath(path);
+                const inputPath = this._inputPathForPath(path);
+                // Create folder
                 await mkdirp.sync(nodePath.dirname(outputPath));
-                // Start transcoding
+                // Check if transcodable
                 this.info('Transcoding...', path);
-                try {
-                    await this._transcode(inputPath, outputPath);
-                    this.info('Transcoded', path);
-                } catch (e) {
-                    this.error('Could not transcode', path, e);
+                if (await this._isAudioFile(inputPath)) {
+                    await mkdirp.sync(nodePath.dirname(outputPath));
+                    // Start transcoding
+                    this.info('Transcoding...', path);
+                    try {
+                        await this._transcode(inputPath, outputPath);
+                        this.info('Transcoded', path);
+                    } catch (e) {
+                        this.error('Could not transcode', path, e);
+                    }
+                } else {
+                    // Just copy file if not transcodable
+                    this.info('Moving file', path);
+                    fs.copyFileSync(inputPath, outputPath);
                 }
-            } else {
-                // Just copy file if not transcodable
-                this.info('Moving file', path);
-                fs.copyFileSync(inputPath, outputPath);
+            } catch (e) {
+                this.info('UNEXPECTED ERROR', 'onChange', e);
             }
         });
     };
 
     _onRemove = async (path: string) => {
-        console.log('QEUEUE REMOVE', path);
         await this._queue.add(async () => {
-            const pathNoExt = path
-                .split('.')
-                .slice(0, -1)
-                .join();
-            glob(process.cwd() + '/music_out/' + pathNoExt + '*', {}, (err, files) => {
-                files.forEach(file => {
-                    fs.unlinkSync(file);
-                    this.info('Removed', path);
-                    let parentPath = nodePath.dirname(file);
-                    while (!parentPath.endsWith('music_out')) {
-                        if (fs.readdirSync(parentPath).length > 0) break;
-                        fs.rmdirSync(parentPath);
-                        parentPath = nodePath.dirname(parentPath);
-                    }
+            try {
+                const pathNoExt = path
+                    .split('.')
+                    .slice(0, -1)
+                    .join();
+                glob(process.cwd() + '/music_out/' + pathNoExt + '*', {}, (err, files) => {
+                    files.forEach(file => {
+                        fs.unlinkSync(file);
+                        this.info('Removed', path);
+                        let parentPath = nodePath.dirname(file);
+                        while (!parentPath.endsWith('music_out')) {
+                            if (fs.readdirSync(parentPath).length > 0) break;
+                            fs.rmdirSync(parentPath);
+                            parentPath = nodePath.dirname(parentPath);
+                        }
+                    });
                 });
-            });
+            } catch (e) {
+                this.info('UNEXPECTED ERROR', 'onRemove', e);
+            }
         });
     };
 
