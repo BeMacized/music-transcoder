@@ -22,7 +22,7 @@ export class AudioConverter extends Provider implements OnInit {
         this._watcher = chokidar.watch(process.cwd() + '/music_in/**/*', {
             ignored: /^\./,
             followSymlinks: false,
-            usePolling: true,
+            usePolling: false,
             interval: 1000,
             binaryInterval: 1000,
             cwd: process.cwd() + '/music_in'
@@ -32,6 +32,7 @@ export class AudioConverter extends Provider implements OnInit {
             .on('change', this._onChange)
             .on('unlink', this._onRemove)
             .on('error', e => this.error(e));
+        this.info('Started audio converter service');
     }
 
     _transcode = async (inputPath: string, outputPath: string) => {
@@ -52,6 +53,7 @@ export class AudioConverter extends Provider implements OnInit {
     };
 
     _onAdd = async (path: string) => {
+        console.log('QUEUE ADD', path);
         await this._queue.add(async () => {
             // Check if already transcoded
             const outputPath = await this._outputPathForPath(path);
@@ -79,6 +81,7 @@ export class AudioConverter extends Provider implements OnInit {
     };
 
     _onChange = async (path: string) => {
+        console.log('QUEUE CHANGE', path);
         await this._queue.add(async () => {
             const outputPath = await this._outputPathForPath(path);
             const inputPath = this._inputPathForPath(path);
@@ -105,6 +108,7 @@ export class AudioConverter extends Provider implements OnInit {
     };
 
     _onRemove = async (path: string) => {
+        console.log('QEUEUE REMOVE', path);
         await this._queue.add(async () => {
             const pathNoExt = path
                 .split('.')
